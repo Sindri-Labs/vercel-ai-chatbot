@@ -1,0 +1,5 @@
+docker-compose.yml
+.dockerignore
+.gitignore
+start_docker.sh
+MODIFICATIONS.md

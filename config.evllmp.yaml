@@ -1,0 +1,13 @@
+listenAddress: 0.0.0.0
+listenPort: 8080
+appMode: release
+
+sindriClient:
+  baseURL: ${SINDRI_BASE_URL}
+  apiKey: ${OPENAI_API_KEY}
+  requestTimeoutSeconds: 10
+
+  encryption:
+    enabled: true
+    keySource: ephemeral # or 'value' or 'file'
+    # Configure keys if not using ephemeral
