@@ -9,13 +9,14 @@ This is a clone of [Vercel's AI Chatbot](https://vercel.com/templates/next.js/ne
 
 
 ### 1. Clone the Repo
+In a terminal,
 ```bash
-git clone git@github.com:Sindri-Labs/vercel-ai-chatbot.git
+git clone https://github.com/Sindri-Labs/vercel-ai-chatbot.git
 cd vercel-ai-chatbot
 ```
 
 ### 2. Setup (Run with Sindri)
-Configure your environment variable file that will be used with Docker Compose:
+Configure your environment variable file that will be used with Docker Compose
 ```bash
 cp .env.example.sindri .env
 ```
@@ -23,9 +24,15 @@ Then, edit your new `.env` file. Fill out the `OPENAI_API_KEY` variable with you
 
 
 ### 3. Run
-Build and run the application:
+Build and run the application (building will take several minutes)
 ```bash
 docker compose --env-file .env up --build
+```
+
+You will know it is ready when you see logs similar to
+```
+vercel-ai-chatbot-frontend-1  |  ✓ Starting...
+vercel-ai-chatbot-frontend-1  |  ✓ Ready in 542ms
 ```
 
 
