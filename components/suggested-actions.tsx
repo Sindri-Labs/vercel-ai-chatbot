@@ -34,9 +34,9 @@ function PureSuggestedActions({
       action: `Help me write an essay about silicon valley`,
     },
     {
-      title: 'What is the weather',
-      label: 'in San Francisco?',
-      action: 'What is the weather in San Francisco?',
+      title: 'What is a',
+      label: 'trusted execution environment?',
+      action: 'What is a trusted execution environment?',
     },
   ];
 
