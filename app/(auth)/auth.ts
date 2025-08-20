@@ -5,6 +5,7 @@ import { createGuestUser, getUser } from '@/lib/db/queries';
 import { authConfig } from './auth.config';
 import { DUMMY_PASSWORD } from '@/lib/constants';
 import type { DefaultJWT } from 'next-auth/jwt';
+import { generateUUID } from '@/lib/utils';
 
 export type UserType = 'guest' | 'regular';
 
@@ -68,7 +69,15 @@ export const {
       async authorize() {
         try {
           console.log('Creating guest user via NextAuth...');
-          const [guestUser] = await createGuestUser();
+          
+          // Add a small delay to ensure database connection is ready
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Generate a predictable user ID for the session
+          const sessionUserId = generateUUID();
+          console.log('Generated session user ID:', sessionUserId);
+          
+          const [guestUser] = await createGuestUser(sessionUserId);
           console.log('Guest user created via NextAuth:', guestUser);
           
           // Ensure the user object has the required properties
@@ -77,6 +86,11 @@ export const {
             return null;
           }
           
+          console.log('Returning guest user:', { 
+            id: guestUser.id, 
+            email: guestUser.email, 
+            type: 'guest' 
+          });
           return { 
             id: guestUser.id, 
             email: guestUser.email, 

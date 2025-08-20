@@ -40,7 +40,7 @@ import { ChatSDKError } from '../errors';
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);
-const db = drizzle(client);
+export const db = drizzle(client);
 
 
 
@@ -65,16 +65,39 @@ export async function createUser(email: string, password: string) {
   }
 }
 
-export async function createGuestUser() {
+export async function createGuestUser(specifiedId?: string) {
   const email = `guest-${Date.now()}`;
   const password = generateHashedPassword(generateUUID());
+  const userId = specifiedId || generateUUID();
 
   try {
-    return await db.insert(user).values({ email, password }).returning({
+    console.log('Attempting to create guest user with email:', email, 'and ID:', userId);
+    
+    // Test database connection first
+    await db.select().from(user).limit(1);
+    console.log('Database connection test successful');
+    
+    const result = await db.insert(user).values({ 
+      id: userId,
+      email, 
+      password 
+    }).returning({
       id: user.id,
       email: user.email,
     });
+    
+    console.log('Guest user created successfully:', result);
+    return result;
   } catch (error) {
+    console.error('Failed to create guest user:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      email,
+      userId,
+      hasPassword: !!password
+    });
+    
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to create guest user',

@@ -18,6 +18,7 @@ import {
   saveChat,
   saveMessages,
 } from '@/lib/db/queries';
+import { db } from '@/lib/db/queries';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
 import { createDocument } from '@/lib/ai/tools/create-document';
@@ -38,6 +39,8 @@ import type { Chat } from '@/lib/db/schema';
 import { differenceInSeconds } from 'date-fns';
 import { ChatSDKError } from '@/lib/errors';
 import { auth } from '@/app/(auth)/auth';
+import { eq } from 'drizzle-orm';
+import { user, chat } from '@/lib/db/schema';
 
 
 export const maxDuration = 60;
@@ -100,24 +103,39 @@ export async function POST(request: Request) {
       }
     }
 
-    let chat = null;
+    let chatData: Chat | null = null;
     // Always try to get or create chat for message persistence
-    chat = await getChatById({ id });
+    chatData = await getChatById({ id });
 
-    if (!chat) {
+    // Track the actual user ID to use for database operations
+    let actualUserId = session.user.id;
+
+    // For authenticated users, verify they exist in the database
+    if (session.user.type === 'regular') {
+      const userExists = await db.select().from(user).where(eq(user.id, session.user.id)).limit(1);
+      if (userExists.length === 0) {
+        console.error('Regular user not found in database:', session.user.id);
+        return new ChatSDKError('unauthorized:api').toResponse();
+      }
+    }
+    
+    // Use the session user ID directly (NextAuth ensures guest users exist in DB)
+    actualUserId = session.user.id;
+
+    if (!chatData) {
       const title = await generateTitleFromUserMessage({
         message,
       });
 
       await saveChat({
         id,
-        userId: session.user.id,
+        userId: actualUserId, // Use the correct user ID
         title,
         visibility: selectedVisibilityType,
       });
     } else {
       // Check ownership for private chats
-      if (chat.visibility === 'private' && chat.userId !== session.user.id) {
+      if (chatData.visibility === 'private' && chatData.userId !== actualUserId) {
         return new ChatSDKError('forbidden:chat').toResponse();
       }
     }
@@ -189,21 +207,21 @@ export async function POST(request: Request) {
               getWeather,
               createDocument: createDocument({ 
                 session: { 
-                  user: { id: session.user.id, type: session.user.type, email: session.user.email },
+                  user: { id: actualUserId, type: session.user.type, email: session.user.email },
                   expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
                 }, 
                 dataStream 
               }),
               updateDocument: updateDocument({ 
                 session: { 
-                  user: { id: session.user.id, type: session.user.type, email: session.user.email },
+                  user: { id: actualUserId, type: session.user.type, email: session.user.email },
                   expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
                 }, 
                 dataStream 
               }),
               requestSuggestions: requestSuggestions({
                 session: { 
-                  user: { id: session.user.id, type: session.user.type, email: session.user.email },
+                  user: { id: actualUserId, type: session.user.type, email: session.user.email },
                   expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
                 },
                 dataStream,
@@ -211,7 +229,7 @@ export async function POST(request: Request) {
             } : {},
             onFinish: async ({ response }) => {
               // Always save assistant messages for persistence
-              if (session.user?.id) {
+              if (actualUserId) {
                 try {
                   const assistantId = getTrailingMessageId({
                     messages: response.messages.filter(
@@ -291,7 +309,7 @@ export async function POST(request: Request) {
         };
 
         // Save the assistant message to database for persistence
-        if (session.user?.id) {
+        if (actualUserId) {
           await saveMessages({
             messages: [
               {
